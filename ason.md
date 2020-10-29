@@ -20,7 +20,7 @@ Primitive encoding
 ASON may contain any byte that is not explicitly forbidden. A further eight bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
 
 * "ASON forbidden" - 0x00 [NUL], 0x11..0x14 [DC1-4], or 0x19..0x1a [CAN, EM, SUB] (but see note about EM below)
-* "ASON structure" - 0x01..0x04 and 0x0c..0x0f
+* "ASON structure" - 0x01..0x04 [SOH, STX, ETX, EOT] and 0x0c..0x0f [FS, GS, RS, US]
 
 "ASON plaintext" is any other sequence of one or more bytes. These are further classified:
 
