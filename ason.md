@@ -29,7 +29,7 @@ ASON may contain any byte that is not explicitly forbidden. A further eight byte
 * "ASCII linebreak" - 0x0a..0x0d [LF, VT, FF, CR]
 * "ASCII printable" - 0x21..0x7e, which take their usual ASCII meanings
 * "ASCII extended" - 0x80..0xff (treated as opaque)
-* ASCII 0x07, 0x0e, 0x0f, 0x7f [BEL, SI, SO, DEL] are treated as opaque
+* ASCII 0x07, 0x0e, 0x0f, 0x1b, 0x7f [BEL, SI, SO, ESC, DEL] are treated as opaque, but any SI/SO or escape sequences SHOULD be properly terminated as per ISO-2022.
 
 In ASON plaintext, the following meanings MAY be inferred if the application layer supports it:
 
@@ -119,17 +119,17 @@ ASON-aware text display/edit
 
 An ASON-aware text display system SHOULD conform to the following:
 
-* `^A^B^C^D` delimited texts should be shown either inverse video or distinctly coloured.
-* `^^^_` delimited structures should be shown as outlined 1-D or 2-D arrays.
-    * Literal `^^^_` characters MAY be displayed as inverse-video or distinctly coloured `\n>` and `\t|` respectively.
-* `^\^]` delimited structures should be shown using hlines and/or distinct colours.
-    * Literal `^\^]` characters MAY be displayed as full lines of inverse-video or distinctly coloured `\n=====\n>` and `\n------\n>` respectively.
+* [SOH, STX, ETX, EOT] delimited texts should be shown either inverse video or distinctly coloured.
+* [RS, US] delimited structures should be shown as outlined 1-D or 2-D arrays.
+    * Literal [RS, US] characters MAY be displayed as inverse-video or distinctly coloured `\n>` and `\t|` respectively.
+* [FS, GS] delimited structures should be shown using hlines and/or distinct colours.
+    * Literal [FS, GS] characters MAY be displayed as full lines of inverse-video or distinctly coloured `\n=====\n>` and `\n------\n>` respectively.
 * Boolean values should be shown using checkbox glyphs or similar, either inverse video or distinctly coloured.
 
 An ASON-aware text input system SHOULD in addition conform to the following:
 
-* A typed Ctrl-A SHOULD indicate a new header and a typed Ctrl-B SHOULD end the header and start the text. The editor SHOULD then autocomplete the trailing `^D` so that the user does not have to type it (given that Ctrl-D often causes connections to drop when typed).
-* `^\^]^^^_` SHOULD be entered using Ctrl-4 to Ctrl-7
+* A typed Ctrl-A SHOULD indicate a new header and a typed Ctrl-B SHOULD end the header and start the text. The editor SHOULD then autocomplete the trailing [EOT] so that the user does not have to type it (given that Ctrl-D often causes connections to drop when typed).
+* [FS, GS, RS, US] SHOULD be entered using Ctrl-4 to Ctrl-7
 
 An ASON-aware IDE MAY also conform to the following:
 
@@ -182,6 +182,7 @@ The following special meanings are understood by ASON at the metadata level, and
 ```
 [DLE ENQ] ^P^E 0x10,0x05 (TC5, quote)
 [DLE ACK] ^P^F 0x10,0x06 (TC6, list)
+...
 [DLE NAK] ^P^U 0x10,0x15 (TC8, dictionary)
 [DLE SYN] ^P^V 0x10,0x16 (TC9, table)
 [DLE ETB] ^P^W 0x10,0x17 (TC10, array)
