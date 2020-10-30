@@ -33,7 +33,7 @@ ASON may contain any byte that is not explicitly forbidden. A further eight byte
 
 In ASON plaintext, the following meanings MAY be inferred if the application layer supports it:
 
-* Boolean values are encoded as the bytes [ACK] (true) and [NAK] (false).
+* Boolean values MAY be encoded as [ACK] (true) and [NAK] (false).
 * [ENQ] MAY be used to indicate "undefined".
 * [ETB] MAY be used as a paragraph separator, as per IPTC-7901.
 * Numeric values MAY be represented as a sequence of ASCII printable characters in one of the standard printf numeric formats.
@@ -73,17 +73,15 @@ Structured text formats
 
 Structured text formats are denoted by a key-value pair where the key is [SYN] and the value is a transmission control character sequence.
 
-* The stext of a quote [SOH SYN US NAK] `^A^V^_^U` ("ASON false") is a black box. Any enclosed ASON structure must properly nest but SHOULD NOT be interpreted.
+* The stext of a quote [SOH SYN US DLE ENQ] `^A^V^_^P^E` ("ASON TC5") is a black box. Any enclosed ASON structure must properly nest but SHOULD NOT be interpreted.
 
-* The stext of a list [SOH SYN US ACK] `^A^V^_^F` ("ASON true") contains one or more fields of ASON text, separated by [US]. A list with a single entry can be used to create a file magic number where no other structure is required (see below).
+* The stext of a list [SOH SYN US DLE ACK] `^A^V^_^P^F` ("ASON TC6") contains one or more fields of ASON text, separated by [US]. A list with a single entry can be used to create a file magic number where no other structure is required (see below).
 
-We can optionally impose a minimal schema on the stext by using DLE escape sequences. These classify the stexts by the highest-dimensional structure separator they may contain (RS, GS or FS).
+* The stext of a dictionary [SOH SYN US DLE NAK] `^A^V^_^P^U` ("ASON TC8") is represented as `key1^_value1[^^key2^_value2...]`. It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same structure as the htext and ftext). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text.
 
-* The stext of a dictionary [SOH SYN US DLE NAK] `^A^V^_^P^U` ("ASON special 1") is represented as `key1^_value1[^^key2^_value2...]`. It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same structure as the htext and ftext). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text.
+* The stext of a table [SOH SYN US DLE SYN] `^A^V^_^P^V` ("ASON TC9") is represented as `key1^_key2...^]value(1,key1)^_value(1,key2)...[^^value(2,key1)^_value(2,key2)...]`. The group separator [GS] is used to separate the first row, containing the column names (keys), from the rows (records) containing the values (fields). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text.
 
-* The stext of a table [SOH SYN US DLE SYN] `^A^V^_^P^V` ("ASON special 2") is represented as `key1^_key2...^]value(1,key1)^_value(1,key2)...[^^value(2,key1)^_value(2,key2)...]`. The group separator [GS] is used to separate the first row, containing the column names (keys), from the rows (records) containing the values (fields). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text.
-
-* The stext of an array [SOH SYN US DLE ETB] `^A^V^_^P^W` ("ASON special 3") is represented as `value(1,1)[^_value(1,2)...][^^value(2,1)[^_value(2,2)...]...]`. It can have up to four dimensions by using all of [FS, GS, RS, US]; up to sixteen by using the big-endian two-character sequences [FS FS, FS GS, FS RS,... US GS, US RS, US US]; up to 64 by using three-character sequences etc. Empty cells should be indicated by [ENQ] (undefined). Otherwise the cell contents are ASON text. Arrays MAY be ragged-right if the application allows it.
+* The stext of an array [SOH SYN US DLE ETB] `^A^V^_^P^W` ("ASON TC10") is represented as `value(1,1)[^_value(1,2)...][^^value(2,1)[^_value(2,2)...]...]`. It can have up to four dimensions by using all of [FS, GS, RS, US]; up to sixteen by using the big-endian two-character sequences [FS FS, FS GS, FS RS,... US GS, US RS, US US]; up to 64 by using three-character sequences etc. Empty cells should be indicated by [ENQ] (undefined). Otherwise the cell contents are ASON text. Arrays MAY be ragged-right if the application allows it.
 
 Magic number
 ------------
@@ -170,7 +168,7 @@ The following special meanings are understood by ASON at the metadata level, and
 [ENQ] ^E 0x05 (undefined)
 [ACK] ^F 0x06 (true)
 ...
-[DLE] ^P 0x10 (escape)
+[DLE] ^P 0x10 (metadata)
 ...
 [NAK] ^U 0x15 (false)
 [SYN] ^V 0x16 (padding)
@@ -182,6 +180,8 @@ The following special meanings are understood by ASON at the metadata level, and
 [DLE] is used to escape the normal meanings of [NAK, SYN, ETB] in order to encode structure metadata using terminal-safe unprintables:
 
 ```
+[DLE ENQ] ^P^E 0x10,0x05 (TC5, quote)
+[DLE ACK] ^P^F 0x10,0x06 (TC6, list)
 [DLE NAK] ^P^U 0x10,0x15 (TC8, dictionary)
 [DLE SYN] ^P^V 0x10,0x16 (TC9, table)
 [DLE ETB] ^P^W 0x10,0x17 (TC10, array)
@@ -194,15 +194,13 @@ ISO-646 also permits the following unprintable sequences, which are either forbi
 [DLE STX] ^P^B 0x10,0x02 (TC2, forbidden)
 [DLE ETX] ^P^C 0x10,0x03 (TC3, forbidden)
 [DLE EOT] ^P^D 0x10,0x04 (TC4, forbidden)
-[DLE ENQ] ^P^E 0x10,0x05 (TC5, reserved)
-[DLE ACK] ^P^F 0x10,0x06 (TC6, reserved)
 ...
 [DLE DLE] ^P^P 0x10,0x10 (TC7, reserved)
 ```
 
 TC1-4 MUST NOT be used at any layer to avoid any ambiguity with ASON structure.
 
-[DLE DLE] introduces an arbitrary-length string of ASON specials [ENQ, ACK, DLE, NAK, SYN, ETB], which terminates on the first character not from that set. No such sequences are currently defined at the ASON level, but applications MAY use them at plaintext level.
+[DLE DLE] introduces an arbitrary-length string of ASON specials [ENQ, ACK, DLE, NAK, SYN, ETB], which terminates on the first character not from that set. No such sequences are currently defined.
 
 C0 control characters with standard meanings in the plaintext layer
 -------------------------------------------------------------------
