@@ -25,11 +25,11 @@ ASON may contain any byte that is not explicitly forbidden. A further eight byte
 "ASON plaintext" is any other sequence of one or more bytes. These are further classified:
 
 * "ASON special" - 0x05 [ENQ], 0x06 [ACK], 0x10 [DLE], or 0x15..0x17 [NAK, SYN, ETB]
-* "ASCII whitespace" - 0x08 [BS], 0x09 [HT], or 0x20 [SP]
+* "ASCII whitespace" - 0x09 [HT], or 0x20 [SP]
 * "ASCII linebreak" - 0x0a..0x0d [LF, VT, FF, CR]
 * "ASCII printable" - 0x21..0x7e, which take their usual ASCII meanings
 * "ASCII extended" - 0x80..0xff (treated as opaque)
-* ASCII 0x07, 0x0e, 0x0f, 0x1b, 0x7f [BEL, SI, SO, ESC, DEL] are treated as opaque, but any SI/SO or escape sequences SHOULD be properly terminated as per ISO-2022.
+* ASCII 0x07, 0x08, 0x0e, 0x0f, 0x1b, 0x7f [BEL, BS, SI, SO, ESC, DEL] are treated as opaque, but any SI/SO or escape sequences SHOULD be properly terminated as per ISO-2022.
 
 In ASON plaintext, the following meanings MAY be inferred if the application layer supports it:
 
@@ -110,7 +110,7 @@ ASON has the potential to add further formatting chaos:
 
 We therefore explicitly instruct ASON about the nature of the linebreaks it should expect to find, and allow it to have embedded compatibility whitespace that formats the output when processed in legacy applications, but which ASON-aware applications can safely ignore.
 
-* Any ASCII whitespace [BS, HT, SP] adjoining an information structure character [FS, GS, RS, US] MUST be ignored. Meaningful leading or trailing whitespace can be indicated by using a SYN character between the whitespace and the structure character, in which case only the SYN should be ignored.
+* Any ASCII whitespace [HT, SP] adjoining an information structure character [FS, GS, RS, US] MUST be ignored. Meaningful leading or trailing whitespace can be indicated by using a SYN character between the whitespace and the structure character, in which case only the SYN should be ignored.
 * IFF the htext key [ETB] is provided, then its value MUST be a non-empty string containing ASCII linebreak bytes only. During decoding, any matching trailing string MUST be stripped from the last value of each record in all three texts of the structure, including in child structures unless overridden. Only one linebreak sequence should be stripped from each record.
 
 
@@ -209,17 +209,17 @@ C0 control characters with standard meanings in the plaintext layer
 The BEL, format effector and charset shift characters MAY appear in the plaintext layer of ASON, and have their usual meanings. If any escape sequences are used, they SHOULD be well-terminated and terminal-safe.
 
 ```
-[BEL] ^G 0x07
-[BS]  ^H 0x08 (whitespace)
+[BEL] ^G 0x07 (opaque)
+[BS]  ^H 0x08 (opaque)
 [HT]  ^I 0x09 (whitespace)
 [LF]  ^J 0x0a (linebreak)
 [VT]  ^K 0x0b (linebreak)
 [FF]  ^L 0x0c (linebreak)
 [CR]  ^M 0x0d (linebreak)
-[SI]  ^N 0x0e (charset)
-[SO]  ^O 0x0f (charset)
+[SI]  ^N 0x0e (opaque)
+[SO]  ^O 0x0f (opaque)
 ...
-[ESC] ^[ 0x1b
+[ESC] ^[ 0x1b (opaque)
 ```
 
 Plaintext may also contain any byte in the range 0x20..0xff.
@@ -277,16 +277,16 @@ Format effectors:
 
 ```
 [BEL]    0x2f               (ASCII 0x07)
-[BS]     0x16 (whitespace)  (ASCII 0x08)
+[BS]     0x16 (opaque)      (ASCII 0x08)
 [HT]     0x05 (whitespace)  (ASCII 0x09)
 [LF]     0x25 (linebreak)   (ASCII 0x0a)
 [VT]  ** 0x0b (linebreak)
 [FF]  ** 0x0c (linebreak)
 [CR]  ** 0x0d (linebreak)
-[SI]  ** 0x0e (charset)
-[SO]  ** 0x0f (charset)
+[SI]  ** 0x0e (opaque)
+[SO]  ** 0x0f (opaque)
 ...
-[ESC]    0x27               (ASCII 0x1b)
+[ESC]    0x27 (opaque)      (ASCII 0x1b)
 ```
 
 The representation of [SYN] differs between ASCII (0x16) and EBCDIC (0x32), so ESON naturally has a distinct magic number (0x01,0x32,0x1f).
