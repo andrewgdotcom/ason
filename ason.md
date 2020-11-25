@@ -75,9 +75,9 @@ Structured text formats are denoted by a key-value pair where the key is [SYN] a
 
 * The stext of a quote [SOH SYN US DLE ENQ] `^A^V^_^P^E` ("ASON TC5") is a black box. Any enclosed ASON structure must properly nest but SHOULD NOT be interpreted.
 
-* The stext of a list [SOH SYN US DLE ACK] `^A^V^_^P^F` ("ASON TC6") contains one or more fields of ASON text, separated by [US]. A list with a single entry can be used to create a file magic number where no other structure is required (see below).
+* The stext of a list [SOH SYN US DLE ACK] `^A^V^_^P^F` ("ASON TC6") contains one or more fields of ASON text, separated by [US]. A list with a single entry can be used to create a file magic number where no other structure is required (see below). If the list has no entries, then its stext should consist only of [NAK].
 
-* The stext of a dictionary [SOH SYN US DLE NAK] `^A^V^_^P^U` ("ASON TC8") is represented as `key1^_value1[^^key2^_value2...]`. It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same structure as the htext and ftext). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text.
+* The stext of a dictionary [SOH SYN US DLE NAK] `^A^V^_^P^U` ("ASON TC8") is represented as `key1^_value1[^^key2^_value2...]`. It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same structure as the htext and ftext). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text. If the dictionary has no entries, then its stext should consist only of [NAK].
 
 * The stext of a table [SOH SYN US DLE SYN] `^A^V^_^P^V` ("ASON TC9") is represented as `key1^_key2...^]value(1,key1)^_value(1,key2)...[^^value(2,key1)^_value(2,key2)...]`. The group separator [GS] is used to separate the first row, containing the column names (keys), from the rows (records) containing the values (fields). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text.
 
