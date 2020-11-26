@@ -88,7 +88,10 @@ Magic number
 
 An ASON document MUST begin with the magic number [SOH SYN US] `^A^V^_` (0x01,0x16,0x1f). This is the start of an ASON structure, and is sufficient to uniquely identify an ASON document. [SYN] was chosen as the mandatory first key in order to produce a reliable magic number.
 
-An ASON interpreter MAY search for this magic number at non-initial positions in a stream or file if the application allows it. For example, an ASON-aware script interpreter MAY ignore leading lines of the form `#!/path/to/executable\n`. IFF the magic number is found at a non-initial position it MUST be preceded by two SYN characters, i.e. [SYN SYN SOH SYN US] `^V^V^A^V^_`, and the interpretation of any preceding bytes is application-dependent. (cf IPTC-7901)
+An ASON interpreter MAY search for this magic number at non-initial positions in a stream or file if the application allows it. For example, an ASON-aware script interpreter MAY ignore leading lines of the form `#!/path/to/executable\n`. IFF the magic number is found at a non-initial position it MUST either:
+
+* be preceded by two SYN characters, i.e. [SYN SYN SOH SYN US] `^V^V^A^V^_`, and the interpretation of any preceding bytes is application-dependent. (cf IPTC-7901)
+* be preceded only by a UTF-8 encoded byte-order mark (BOM) (see "USON" below).
 
 The presence of an [EM] character immediately following the [EOT] character of the outermost structure, i.e. [EOT EM] `^D^Y`, disables ASON interpretation for the rest of the file. The interpretation of any subsequent bytes is application-dependent. An application MAY require the [EOT EM] sequence to indicate non-truncation of data.
 
@@ -243,10 +246,25 @@ These bytes MUST NOT appear anywhere in an ASON document. [EM] may be used to in
 ```
 
 
+USON
+====
+
+ASON is an extended-ASCII format, and is agnostic about the particular extended-ASCII encoding used in the plaintext layer. An application MAY transcode this to UTF-16 or UTF-32 for internal use, in which case all C0 control codes in the ASON structure MUST also be mapped to UTF-16/32, and the resulting format is called Unicode Structured Object Notation (USON).
+
+If USON is written to persistent storage or passed between applications, then a byte-order mark (BOM) SHOULD be prepended to the beginning of the document, i.e. [BOM SOH SYN US ...]. This produces one of four magic numbers:
+
+* 0xff 0xfe 0x01 0x00 0x16 0x00 0x1f 0x00 (UTF-16 little-endian)
+* 0xfe 0xff 0x00 0x01 0x00 0x16 0x00 0x1f (UTF-16 big-endian)
+* 0xff 0xfe 0x00 0x00 0x01 0x00 0x00 0x00 0x16 0x00 0x00 0x00 0x1f 0x00 0x00 0x00 (UTF-32 little-endian)
+* 0x00 0x00 0xfe 0xff 0x00 0x00 0x00 0x01 0x00 0x00 0x00 0x16 0x00 0x00 0x00 0x1f (UTF-32 big-endian)
+
+Unicode transcoding roundtrips SHOULD be idempotent, therefore an ASON application SHOULD tolerate a UTF-8 BOM being prepended to UTF-8 encoded ASON (see "Magic Number" above).
+
+
 ESON
 ====
 
-It is also possible to define EBCDIC Structured Obect Notation by analogy with ASON. All of the C0 controls with meaning at the ASON layer have equivalents in EBCDIC, many of them at the same code points (indicated by **).
+It is also possible to define EBCDIC Structured Obect Notation by extension. All of the C0 controls with meaning at the ASON layer have equivalents in EBCDIC, many of them at the same code points (indicated by **).
 
 Structure controls:
 
