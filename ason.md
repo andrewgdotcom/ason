@@ -113,8 +113,8 @@ ASON has the potential to add further formatting chaos:
 
 We therefore explicitly instruct ASON about the nature of the linebreaks it should expect to find, and allow it to have embedded compatibility whitespace that formats the output when processed in legacy applications, but which ASON-aware applications can safely ignore.
 
-* Any ASCII whitespace [HT, SP] adjoining an information structure character [FS, GS, RS, US] MUST be ignored. Meaningful leading or trailing whitespace can be indicated by using a SYN character between the whitespace and the structure character, in which case only the SYN should be ignored.
-* IFF the htext key [ETB] is provided, then its value MUST be a non-empty string containing ASCII linebreak bytes only. During decoding, any matching trailing string MUST be stripped from the last value of each record in all three texts of the structure, including in child structures unless overridden. Only one linebreak sequence should be stripped from each record.
+* Any ASCII whitespace [HT, SP] surrounding a plaintext sequence MUST be ignored. Meaningful leading or trailing whitespace can be protected by delimiting the plaintext with a single [SYN] byte on either or both sides, in which case only that whitespace (if any) on the outer (structure) side of the [SYN] should be stripped. The delimiting [SYN] MUST also be ignored, but any further contiguous [SYN] characters MUST be considered part of the plaintext.
+* IFF the htext key [ETB] is provided, then its value MUST be a non-empty string containing the byte sequence used for linebreaks within the structure. This sequence MUST NOT contain ASCII whitespace or ASON special characters, but is otherwise unconstrained. During decoding, any matching trailing string MUST be stripped from the last value of each plaintext sequence in all three texts of the structure, BUT NOT in any child structures. A maximum of one linebreak string should be stripped from each record.
 
 
 ASON-aware text display/edit
