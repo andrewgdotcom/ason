@@ -60,16 +60,16 @@ The htext is a sequence of one or more key/value records of the form:
     
 where the delimiters are [RS, US] = `^^ ^_`.
 
-* The key [SYN] = `^V` MUST be present in the htext and MUST be the first key.
+* The magic key [SYN] = `^V` MUST be present in the htext and MUST be the first key.
     It takes a value that indicates the format of the structure (see below).
-* The key `=` takes a plaintext value which is the name of the structure.
-* The key `-` takes a plaintext value which is a caption for the structure.
+* The key [SYN =] = `^V =` takes a plaintext value which is the name of the structure.
+* The key [SYN -] = `^V -` takes a plaintext value which is a caption for the structure.
     It may appear in either or both of the htext or ftext.
 
-Applications may define their own plaintext keys, so long as they begin with an ASCII printable character.
-Keys with nonprintable initials are reserved to ASON.
+Applications may define their own htext keys, so long as they contain only printable characters.
+Keys starting with non-printables are reserved to ASON.
 
-The ftext is similar to the htext, but MUST NOT contain the key [SYN].
+The ftext is similar to the htext, but MUST NOT contain the magic key [SYN].
 
 ### stext
 
