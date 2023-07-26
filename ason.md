@@ -17,12 +17,14 @@ ASON does this by using the ISO-646 information separator characters to impose a
 Primitive encoding
 ------------------
 
-ASON may contain any byte that is not explicitly forbidden. A further eight bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
+ASON may contain any byte that is not explicitly forbidden.
+A further eight bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
 
 * "ASON forbidden" - 0x00 [NUL], 0x11..0x14 [DC1-4], or 0x19..0x1a [CAN, EM, SUB] (but see note about EM below)
 * "ASON structure" - 0x01..0x04 [SOH, STX, ETX, EOT] and 0x0c..0x0f [FS, GS, RS, US]
 
-"ASON plaintext" is any other sequence of one or more bytes. These are further classified:
+"ASON plaintext" is any other sequence of one or more bytes.
+These are further classified:
 
 * "ASON special" - 0x05 [ENQ], 0x06 [ACK], 0x10 [DLE], or 0x15..0x17 [NAK, SYN, ETB]
 * "ASCII whitespace" - 0x09 [HT], or 0x20 [SP]
@@ -51,49 +53,80 @@ A structure consists of a header text (htext) and a structured text (stext), wit
 
 The htext is a sequence of one or more key/value records of the form `key^_value[^^key^_value[...]]` where the delimiters are [US, RS]:
 
-* The key [SYN] `^V` MUST be present in the htext and MUST be the first key. It takes a special-character value that indicates the format of the structure (see below).
-* The key [ETB] `^W` ("paragraph") MAY be present in the htext, in which case it MUST be the second key. It takes a value that contains the sequence of bytes that are used as the line terminator within the stext.
+* The key [SYN] `^V` MUST be present in the htext and MUST be the first key.
+It takes a special-character value that indicates the format of the structure (see below).
+* The key [ETB] `^W` ("paragraph") MAY be present in the htext, in which case it MUST be the second key.
+It takes a value that contains the sequence of bytes that are used as the line terminator within the stext.
 * The key = takes a plaintext value which is the name of the structure.
-* The key - takes a plaintext value which is a caption for the structure. It may appear in either or both of the htext or ftext.
+* The key - takes a plaintext value which is a caption for the structure.
+It may appear in either or both of the htext or ftext.
 
-Applications may define their own plaintext keys, so long as they begin with an alphanumeric character. Keys with non-alphanumeric initials are reserved to ASON.
+Applications may define their own plaintext keys, so long as they begin with an alphanumeric character.
+Keys with non-alphanumeric initials are reserved to ASON.
 
 The ftext is similar to the htext, but MUST NOT contain the key [SYN].
 
 ### stext
 
-The stext is a sequence of one or more ASON texts delimited by the information separators [FS, GS, RS, US] `^\^]^^^_` . The nature of the stext differs between structures.
+The stext is a sequence of one or more ASON texts delimited by the information separators [FS, GS, RS, US] `^\^]^^^_` .
+The nature of the stext differs between structures.
 
 ### Nesting
 
-A structure MAY be nested within another structure's stext. A structure MUST NOT be nested within an htext or ftext. All ASON texts used in the stext must be properly terminated and nested. Any [SO, SI] or other ISO-2022 sequences SHOULD be properly paired. Any values which violate ASON nesting or contain unsafe byte sequences MUST be sanitised, e.g. via ASCII armouring (application dependent).
+A structure MAY be nested within another structure's stext.
+A structure MUST NOT be nested within an htext or ftext.
+All ASON texts used in the stext must be properly terminated and nested.
+Any [SO, SI] or other ISO-2022 sequences SHOULD be properly paired.
+Any values which violate ASON nesting or contain unsafe byte sequences MUST be sanitised, e.g. via BASE64 encoding (application dependent).
 
 Structured text formats
 -----------------------
 
 Structured text formats are denoted by a key-value pair where the key is [SYN] and the value is a transmission control character sequence.
 
-* The stext of a quote [SOH SYN US DLE ENQ] `^A^V^_^P^E` ("ASON TC5") is a black box. Any enclosed ASON structure MUST properly nest but SHOULD NOT be interpreted.
+* The stext of a quote [SOH SYN US DLE ENQ] `^A^V^_^P^E` ("ASON TC5") is a black box.
+Any enclosed ASON structure MUST properly nest but SHOULD NOT be interpreted.
 
-* The stext of a list [SOH SYN US DLE ACK] `^A^V^_^P^F` ("ASON TC6") contains one or more fields of ASON text, separated by [US]. A list with a single entry can be used to create a file magic number where no other structure is required (see below). If the list has no entries, then its stext SHOULD consist only of [ENQ].
+* The stext of a list [SOH SYN US DLE ACK] `^A^V^_^P^F` ("ASON TC6") contains one or more fields of ASON text, separated by [US].
+A list with a single entry can be used to create a file magic number where no other structure is required (see below).
+If the list has no entries, then its stext SHOULD consist only of [ENQ].
 
-* The stext of a dictionary [SOH SYN US DLE NAK] `^A^V^_^P^U` ("ASON TC8") is represented as `key1^_value1[^^key2^_value2...]`. It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same structure as the htext and ftext). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text. If the dictionary has no keys, then its stext SHOULD consist only of [ENQ].
+* The stext of a dictionary [SOH SYN US DLE NAK] `^A^V^_^P^U` ("ASON TC8") is represented as `key1^_value1[^^key2^_value2...]`.
+It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same structure as the htext and ftext).
+Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined).
+Otherwise, keys are plaintext and values are ASON text.
+If the dictionary has no keys, then its stext SHOULD consist only of [ENQ].
 
-* The stext of a table [SOH SYN US DLE SYN] `^A^V^_^P^V` ("ASON TC9") is represented as `key1^_key2...^]value(1,key1)^_value(1,key2)...[^^value(2,key1)^_value(2,key2)...]`. The group separator [GS] is used to separate the first row, containing the column names (keys), from the rows (records) containing the values (fields). Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined). Otherwise, keys are plaintext and values are ASON text. If the table has no columns, then its stext SHOULD consist only of [ENQ].
+* The stext of a table [SOH SYN US DLE SYN] `^A^V^_^P^V` ("ASON TC9") is represented as `key1^_key2...^]value(1,key1)^_value(1,key2)...[^^value(2,key1)^_value(2,key2)...]`.
+The group separator [GS] is used to separate the first row, containing the column names (keys), from the rows (records) containing the values (fields).
+Empty keys are forbidden, and empty values should be indicated by [ENQ] (undefined).
+Otherwise, keys are plaintext and values are ASON text.
+If the table has no columns, then its stext SHOULD consist only of [ENQ].
 
-* The stext of an array [SOH SYN US DLE ETB] `^A^V^_^P^W` ("ASON TC10") is represented as `value(1,1)[^_value(1,2)...][^^value(2,1)[^_value(2,2)...]...]`. It can have up to four dimensions by using all of [FS, GS, RS, US]; up to sixteen by using the big-endian two-character sequences [FS FS, FS GS, FS RS,... US GS, US RS, US US]; up to 64 by using three-character sequences etc. Empty cells should be indicated by [ENQ] (undefined). Otherwise the cell contents are ASON text. Arrays MAY be ragged-right if the application allows it. If the array has no entries, then its stext SHOULD consist only of [ENQ].
+* The stext of an array [SOH SYN US DLE ETB] `^A^V^_^P^W` ("ASON TC10") is represented as `value(1,1)[^_value(1,2)...][^^value(2,1)[^_value(2,2)...]...]`.
+It can have up to four dimensions by using all of [FS, GS, RS, US]; up to sixteen by using the big-endian two-character sequences [FS FS, FS GS, FS RS,... US GS, US RS, US US]; up to 64 by using three-character sequences etc.
+Empty cells should be indicated by [ENQ] (undefined), otherwise the cell contents are ASON text.
+Arrays MAY be ragged-right if the application allows it.
+If the array has no entries, then its stext SHOULD consist only of [ENQ].
 
 Magic number
 ------------
 
-An ASON document MUST begin with the magic number [SOH SYN US] `^A^V^_` (0x01,0x16,0x1f). This is the start of an ASON structure, and is sufficient to uniquely identify an ASON document. [SYN] was chosen as the mandatory first key in order to produce a reliable magic number.
+An ASON document MUST begin with the magic number [SOH SYN US] `^A^V^_` (0x01,0x16,0x1f).
+This is the start of an ASON structure, and is sufficient to uniquely identify an ASON document.
+[SYN] was chosen as the mandatory first key in order to produce a reliable magic number.
 
-An ASON interpreter MAY search for this magic number at non-initial positions in a stream or file if the application allows it. For example, an ASON-aware script interpreter MAY ignore leading lines of the form `#!/path/to/executable\n`. IFF the magic number is found at a non-initial position it MUST either:
+An ASON interpreter MAY search for this magic number at non-initial positions in a stream or file if the application allows it.
+For example, an ASON-aware script interpreter MAY ignore leading lines of the form `#!/path/to/executable\n`.
+IFF the magic number is found at a non-initial position it MUST either:
 
 * be preceded by two SYN characters, i.e. [SYN SYN SOH SYN US] `^V^V^A^V^_`, and the interpretation of any preceding bytes is application-dependent. (cf IPTC-7901)
 * be preceded only by a UTF-8 encoded byte-order mark (BOM) (see "USON" below).
 
-The presence of an [EM] character immediately following the [EOT] character of the outermost structure, i.e. [EOT EM] `^D^Y`, disables ASON interpretation for the rest of the file. The interpretation of any subsequent bytes is application-dependent. An application MAY require the [EOT EM] sequence to indicate non-truncation of data.
+The presence of an [EM] character immediately following the [EOT] character of the outermost structure, i.e. [EOT EM] `^D^Y`, disables ASON interpretation for the rest of the file.
+The interpretation of any subsequent bytes is application-dependent.
+An application SHOULD append [EM] to the end of an emitted ASON document, and MUST do so if there are any subsequent bytes in the file.
+An application MAY require a trailing [EM] to verify non-truncation of data.
 
 
 Compatibility and graceful degradation
@@ -113,8 +146,13 @@ ASON has the potential to add further formatting chaos:
 
 We therefore explicitly instruct ASON about the nature of the linebreaks it should expect to find, and allow it to have embedded compatibility whitespace that formats the output when processed in legacy applications, but which ASON-aware applications can safely ignore.
 
-* Any ASCII whitespace [HT, SP] surrounding a plaintext sequence MUST be ignored. Meaningful leading or trailing whitespace can be protected by delimiting the plaintext with a single [SYN] byte on either or both sides, in which case only that whitespace (if any) on the outer (structure) side of the [SYN] should be stripped. The delimiting [SYN] MUST also be ignored, but any further contiguous [SYN] characters MUST be considered part of the plaintext.
-* IFF the htext key [ETB] is provided, then its value MUST be a non-empty string containing the byte sequence used for linebreaks within the structure. This sequence MUST NOT contain ASCII whitespace or ASON special characters, but is otherwise unconstrained. During decoding, any matching trailing string MUST be stripped from the last value of each plaintext sequence in all three texts of the structure, BUT NOT in any child structures. A maximum of one linebreak string should be stripped from each record.
+* Any ASCII whitespace [HT, SP] surrounding a plaintext sequence MUST be ignored.
+Meaningful leading or trailing whitespace can be protected by delimiting the plaintext with a single [SYN] byte on either or both sides, in which case only that whitespace (if any) on the outer (structure) side of the [SYN] should be stripped.
+The delimiting [SYN] MUST also be ignored, but any further contiguous [SYN] characters MUST be considered part of the plaintext.
+* IFF the htext key [ETB] is provided, then its value MUST be a non-empty string containing the byte sequence used for linebreaks within the structure.
+This sequence MUST NOT contain ASCII whitespace or ASON special characters, but is otherwise unconstrained.
+During decoding, any matching trailing string MUST be stripped from the last value of each plaintext sequence in all three texts of the structure, BUT NOT in any child structures.
+A maximum of one linebreak string should be stripped from each record.
 
 
 ASON-aware text display/edit
@@ -131,7 +169,8 @@ An ASON-aware text display system SHOULD conform to the following:
 
 An ASON-aware text input system SHOULD in addition conform to the following:
 
-* A typed Ctrl-A SHOULD indicate a new header and a typed Ctrl-B SHOULD end the header and start the text. The editor SHOULD then autocomplete the trailing [EOT] so that the user does not have to type it (given that Ctrl-D often causes connections to drop when typed).
+* A typed Ctrl-A SHOULD indicate a new header and a typed Ctrl-B SHOULD end the header and start the text.
+The editor SHOULD then autocomplete the trailing [EOT] so that the user does not have to type it (given that Ctrl-D often causes connections to drop when typed).
 * [FS, GS, RS, US] SHOULD be entered using Ctrl-4 to Ctrl-7
 
 An ASON-aware IDE MAY also conform to the following:
@@ -143,7 +182,9 @@ An ASON-aware IDE MAY also conform to the following:
 Data representation
 ===================
 
-At the data layer ASON is encoded as a sequence of bytes. Some of these are interpreted as ASCII control characters with special meaning to the structure and plaintext layers of ASON. All other bytes are either reserved to the plaintext layer, or forbidden.
+At the data layer ASON is encoded as a sequence of bytes.
+Some of these are interpreted as ASCII control characters with special meaning to the structure and plaintext layers of ASON.
+All other bytes are either reserved to the plaintext layer, or forbidden.
 
 C0 control chars reserved to the structure layer
 ------------------------------------------------
@@ -204,12 +245,14 @@ ISO-646 also permits the following unprintable sequences, which are either forbi
 
 TC1-4 MUST NOT be used at any layer to avoid any ambiguity with ASON structure.
 
-[DLE DLE] introduces an arbitrary-length string of ASON specials [ENQ, ACK, DLE, NAK, SYN, ETB], which terminates on the first character not from that set. No such sequences are currently defined.
+[DLE DLE] introduces an arbitrary-length string of ASON specials [ENQ, ACK, DLE, NAK, SYN, ETB], which terminates on the first character not from that set.
+No such sequences are currently defined.
 
 C0 control characters with standard meanings in the plaintext layer
 -------------------------------------------------------------------
 
-The BEL, format effector and charset shift characters MAY appear in the plaintext layer of ASON, and have their usual meanings. If any escape sequences are used, they SHOULD be well-terminated and terminal-safe.
+The BEL, format effector and charset shift characters MAY appear in the plaintext layer of ASON, and have their usual meanings.
+If any escape sequences are used, they SHOULD be well-terminated and terminal-safe.
 
 ```
 [BEL] ^G 0x07 (opaque)
@@ -230,7 +273,8 @@ Plaintext may also contain any byte in the range 0x20..0xff.
 C0 control characters forbidden
 -------------------------------
 
-These bytes MUST NOT appear anywhere in an ASON document. [EM] may be used to indicate the end of the document, but is not considered part of the document itself.
+These bytes MUST NOT appear anywhere in an ASON document.
+[EM] MAY be used to indicate the end of the document, but is not considered part of the document itself.
 
 ```
 [NUL] ^@ 0x00
@@ -249,9 +293,11 @@ These bytes MUST NOT appear anywhere in an ASON document. [EM] may be used to in
 USON
 ====
 
-ASON is an extended-ASCII format, and is agnostic about the particular extended-ASCII encoding used in the plaintext layer. An application MAY transcode this to UTF-16 or UTF-32 for internal use, in which case all C0 control codes in the ASON structure MUST also be mapped to UTF-16/32, and the resulting format is called Unicode Structured Object Notation (USON).
+ASON is an extended-ASCII format, and is agnostic about the particular extended-ASCII encoding used in the plaintext layer.
+An application MAY transcode this to UTF-16 or UTF-32 for internal use, in which case all C0 control codes in the ASON structure MUST also be mapped to UTF-16/32, and the resulting format is called Unicode Structured Object Notation (USON).
 
-If USON is written to persistent storage or passed between applications, then a byte-order mark (BOM) SHOULD be prepended to the beginning of the document, i.e. [BOM SOH SYN US ...]. This produces one of four magic numbers:
+If USON is written to persistent storage or passed between applications, then a byte-order mark (BOM) SHOULD be prepended to the beginning of the document, i.e. [BOM SOH SYN US ...].
+This produces one of four magic numbers:
 
 * 0xff 0xfe 0x01 0x00 0x16 0x00 0x1f 0x00 (UTF-16 little-endian)
 * 0xfe 0xff 0x00 0x01 0x00 0x16 0x00 0x1f (UTF-16 big-endian)
@@ -264,7 +310,8 @@ Unicode transcoding roundtrips SHOULD be idempotent, therefore an ASON applicati
 ESON
 ====
 
-It is also possible to define EBCDIC Structured Obect Notation by extension. All of the C0 controls with meaning at the ASON layer have equivalents in EBCDIC, many of them at the same code points (indicated by **).
+It is also possible to define EBCDIC Structured Obect Notation by extension.
+All of the C0 controls with meaning at the ASON layer have equivalents in EBCDIC, many of them at the same code points (indicated by **).
 
 Structure controls:
 
