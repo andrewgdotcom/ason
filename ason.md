@@ -62,14 +62,12 @@ where the delimiters are [RS, US] = `^^ ^_`.
 
 * The key [SYN] = `^V` MUST be present in the htext and MUST be the first key.
     It takes a value that indicates the format of the structure (see below).
-* The key [ETB] = `^W` ("paragraph") MAY be present in the htext, in which case it MUST be the second key.
-It takes a value that contains the sequence of bytes that are used as the line terminator within the stext.
 * The key `=` takes a plaintext value which is the name of the structure.
 * The key `-` takes a plaintext value which is a caption for the structure.
     It may appear in either or both of the htext or ftext.
 
-Applications may define their own plaintext keys, so long as they begin with an alphanumeric character.
-Keys with non-alphanumeric initials are reserved to ASON.
+Applications may define their own plaintext keys, so long as they begin with an ASCII printable character.
+Keys with nonprintable initials are reserved to ASON.
 
 The ftext is similar to the htext, but MUST NOT contain the key [SYN].
 
@@ -89,7 +87,9 @@ Any values which violate ASON nesting or contain unsafe byte sequences MUST be s
 Structured text formats
 -----------------------
 
-Structured text formats are denoted by a key-value pair where the key is [SYN] and the value is a transmission control character sequence.
+Structured text formats are denoted by a key-value pair where the key is [SYN] and the value is a metadata string, followed by an optional linebreak string.
+The metadata string consists of a [DLE] character followed by one or more characters from the set [ENQ, ACK, DLE, NAK, SYN, ETB].
+The linebreak string consists of the remainder of the value (see "Compatibility" below).
 
 ### Quote
 
@@ -175,10 +175,12 @@ We therefore explicitly instruct ASON about the nature of the linebreaks it shou
 * Any ASCII whitespace [HT, SP] surrounding a plaintext sequence MUST be ignored.
     Meaningful leading or trailing whitespace can be protected by delimiting the plaintext with a single [SYN] byte on either or both sides, in which case only that whitespace (if any) on the outer (structure) side of the [SYN] should be stripped.
     The delimiting [SYN] MUST also be ignored, but any further contiguous [SYN] characters MUST be considered part of the plaintext.
-* IFF the htext key [ETB] is provided, then its value MUST be a non-empty string containing the byte sequence used for linebreaks within the structure.
+* IFF the value of the htext key [SYN] contains trailing bytes after the metadata sequence, these indicate the byte sequence used for linebreaks within the structure.
     This sequence MUST NOT contain ASCII whitespace or ASON special characters, but is otherwise unconstrained.
-    During decoding, any matching trailing string MUST be stripped from the last value of each plaintext sequence in all three texts of the structure, BUT NOT in any child structures.
+    During decoding, any matching byte sequence MUST be stripped from the end of each record in all three texts of the structure, BUT NOT in any child structures.
     A maximum of one linebreak string should be stripped from each record.
+* Child structures do not inherit any metadata (including linebreak sequences) from their parent.
+    This ensures that ASON documents can be trivially embedded within each other without corruption.
 
 
 ASON-aware text display/edit
