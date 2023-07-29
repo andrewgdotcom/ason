@@ -9,18 +9,28 @@ ASCII structured object notation (ASON) is a serialised data format similar to B
 * Any commonly-used plaintext data can be trivially embedded inside an ASON document.
 * Any ASON document can be trivially embedded inside another ASON document.
 
-ASON does this by using the ISO-646 information separator characters to impose a hierarchical structure on textual data, and reusing the ISO-646 transmission control characters to convey metatextual information, similar to IPTC-7901.
+ASON does this by using the C0 information separator characters to impose a hierarchical structure on textual data, and reusing the C0 transmission control characters to convey metatextual information, similar to IPTC-7901.
 
-* ISO-646: https://www.itscj.ipsj.or.jp/iso-ir/001.pdf
-* IPTC-7901: https://www.iptc.org/std/IPTC7901/1.0/specification/7901V5.pdf
+ASON is a pure 7-bit ASCII encoding, and is therefore automatically compatible with 8-bit extended-ASCII encodings such as ISO-2022 and UTF-8.
+
+References
+----------
+
+* ASCII is defined in ISO-646/ECMA-6: https://www.ecma-international.org/publications-and-standards/standards/ecma-6/
+* C0 control codes are defined in ISO-6429/ECMA-48: https://www.ecma-international.org/publications-and-standards/standards/ecma-48/
+* Transmission control characters TC1-TC10 are defined in ISO-1745/ECMA-16 : https://www.ecma-international.org/publications-and-standards/standards/ecma-16/
+    * DLE sequences (TC7) are defined in ECMA-37: https://www.ecma-international.org/publications-and-standards/standards/ecma-37/
+    * A similar application of transmission control characters can be found in IPTC-7901: https://www.iptc.org/std/IPTC7901/1.0/specification/7901V5.pdf
 
 Primitive encoding
 ------------------
 
 ASON may contain any byte that is not explicitly forbidden.
+Two bytes are formatting directives, the meanings of which are context-dependent.
 A further eight bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
 
-* "ASON forbidden" - 0x00 [NUL], 0x11..0x14 [DC1-4], or 0x19..0x1a [CAN, EM, SUB] (but see note about EM below)
+* "ASON forbidden" - 0x00 [NUL], 0x11..0x14 [DC1-4], or 0x1a [SUB]
+* "ASON format" - 0x18, 0x19 [CAN, EM]
 * "ASON structure" - 0x01..0x04 [SOH, STX, ETX, EOT] and 0x0c..0x0f [FS, GS, RS, US]
 
 "ASON plaintext" is any other sequence of one or more bytes.
@@ -28,22 +38,27 @@ These are further classified:
 
 * "ASON special" - 0x05 [ENQ], 0x06 [ACK], 0x10 [DLE], or 0x15..0x17 [NAK, SYN, ETB]
 * "ASCII whitespace" - 0x09 [HT], or 0x20 [SP]
-* "ASCII linebreak" - 0x0a..0x0d [LF, VT, FF, CR]
-* "ASCII printable" - 0x21..0x7e, which take their usual ASCII meanings
+* "ASCII format" - 0x08 [BS], 0x0a..0x0d [LF, VT, FF, CR]
+* "ASCII graphical" - 0x21..0x7e, which take their usual ASCII meanings
 * "ASCII extended" - 0x80..0xff (treated as opaque)
-* ASCII 0x07, 0x08, 0x0e, 0x0f, 0x1b, 0x7f [BEL, BS, SI, SO, ESC, DEL] are treated as opaque, but any SI/SO or escape sequences SHOULD be properly terminated as per ISO-2022.
+* ASCII 0x07, 0x7f [BEL, DEL] are treated as opaque
+* ASCII 0x08, 0x0f, 0x1b [SI, SO, ESC] are treated as per ISO-2022, but any SI/SO or escape sequences MUST be properly terminated, and the C0 codes MUST NOT be paged out at any time.
 
 In ASON plaintext, the following meanings MAY be inferred if the application layer supports it:
 
 * Boolean values MAY be encoded as [ACK] (true) and [NAK] (false).
 * [ENQ] MAY be used to indicate "undefined".
 * [ETB] MAY be used as a paragraph separator, as per IPTC-7901.
-* Numeric values MAY be represented as a sequence of ASCII printable characters in one of the standard printf numeric formats.
+* Numeric values MAY be represented as a sequence of ASCII graphical characters in one of the standard printf numeric formats.
 
-Although [EM] is not a valid ASON character, it is used to indicate the end of ASON processing.
-As a non-ASON character, it is not considered part of the ASON document.
-If an ASON document is embedded inside another ASON document, any [EM] character used to terminate the inner document MUST be stripped.
-The meaning of any data that follows an [EM] character is application-dependent.
+The following format characters are also defined:
+
+* [CAN] is used to indicate the start of ASON data; any data before it MUST be ignored.
+* [EM] is used to indicate the end of ASON data; any data after it MUST be ignored.
+
+### TODO
+
+* Replace overloading of [SYN] with more idiomatic [CAN, EM] sequences.
 
 Structure encoding
 ------------------
@@ -66,8 +81,8 @@ where the delimiters are [RS, US] = `^^ ^_`.
 * The key [SYN -] = `^V -` takes a plaintext value which is a caption for the structure.
     It may appear in either or both of the htext or ftext.
 
-Applications may define their own htext keys, so long as they contain only printable characters.
-Keys starting with non-printables are reserved to ASON.
+Applications may define their own htext keys, so long as they contain only non-C0 characters.
+Keys starting with C0 codes are reserved to ASON.
 
 The ftext is similar to the htext, but MUST NOT contain the magic key [SYN].
 
@@ -81,8 +96,8 @@ The nature of the stext differs between structures.
 A structure MAY be nested within another structure's stext.
 A structure MUST NOT be nested within an htext or ftext.
 All ASON texts used in the stext must be well-formed and properly nested.
-Any [SO, SI] or other ISO-2022 sequences SHOULD be properly paired and/or terminated.
-Any values which violate ASON nesting or contain unsafe byte sequences MUST be sanitised, e.g. via BASE64 encoding (application dependent).
+Any [SO, SI] or ISO-2022 escape sequences MUST be properly paired and terminated, and the C0 character set MUST NOT be paged out at any time.
+Any values which violate the above nesting rules or contain unsafe byte sequences MUST be sanitised, e.g. via BASE64 encoding (application dependent).
 
 Structured text formats
 -----------------------
@@ -93,18 +108,18 @@ The linebreak string consists of the remainder of the value (see "Compatibility"
 
 ### Quote
 
-The stext of a quote [SOH SYN US DLE ENQ] = `^A ^V ^_ ^P ^E` ("ASON TC5") is opaque.
+The stext of a quote [SOH SYN US DLE ENQ] = `^A ^V ^_ ^P ^E` is opaque.
 Any enclosed ASON structure MUST properly nest but SHOULD NOT be interpreted.
 
 ### List
 
-The stext of a list [SOH SYN US DLE ACK] = `^A ^V ^_ ^P ^F` ("ASON TC6") contains one or more fields of ASON text, separated by [US].
+The stext of a list [SOH SYN US DLE ACK] = `^A ^V ^_ ^P ^F` contains one or more fields of ASON text, separated by [US].
 A list with a single entry can be used to create a file magic number where no other structure is required (see below).
 If the list has no entries, then its stext SHOULD consist only of [ENQ].
 
 ### Dictionary
 
-The stext of a dictionary [SOH SYN US DLE NAK] = `^A ^V ^_ ^P ^U` ("ASON TC8") is represented as
+The stext of a dictionary [SOH SYN US DLE NAK] = `^A ^V ^_ ^P ^U` is represented as
 
     key1 US value1 [ RS key2 US value2 ... ]
 
@@ -115,7 +130,7 @@ If the dictionary has no keys, then its stext SHOULD consist only of [ENQ].
 
 ### Table
 
-The stext of a table [SOH SYN US DLE SYN] = `^A ^V ^_ ^P ^V` ("ASON TC9") is represented as
+The stext of a table [SOH SYN US DLE SYN] = `^A ^V ^_ ^P ^V` is represented as
     
     key1 US key2 ... GS value(1,key1) US value(1,key2) ... [ RS value(2,key1) US value(2,key2) ... ]
 
@@ -126,7 +141,7 @@ If the table has no columns, then its stext SHOULD consist only of [ENQ].
 
 ### Array
 
-The stext of an array [SOH SYN US DLE ETB] = `^A ^V ^_ ^P ^W` ("ASON TC10") is represented as
+The stext of an array [SOH SYN US DLE ETB] = `^A ^V ^_ ^P ^W` is represented as
 
     value(1,1) [ US value(1,2) ... ] [ RS value(2,1) [ US value(2,2) ... ] ... ]
 
@@ -212,7 +227,7 @@ Data representation
 
 At the data layer ASON is encoded as a sequence of bytes.
 Some of these are interpreted as ASCII control characters with special meaning to the structure and plaintext layers of ASON.
-All other bytes are either reserved to the plaintext layer, or forbidden.
+Any byte in the range 0x20..0xff is treated as plaintext by ASON.
 
 C0 control chars reserved to the structure layer
 ------------------------------------------------
@@ -246,29 +261,31 @@ The following control characters are understood by ASON at the metadata layer, a
 [NAK] `^U` 0x15 (false)
 [SYN] `^V` 0x16 (padding)
 [ETB] `^W` 0x17 (paragraph)
+[CAN] `^X` 0x18 (start of data / ignore preceding data)
+[EM]  `^Y` 0x19 (end of data / ignore trailing data)
 ```
 
 ### DLE escape sequences
 
-As per ISO-646, [DLE] is used to escape the normal meanings of [ENQ, ACK, NAK, SYN, ETB].
-ASON uses these sequences to encode structure metadata using terminal-safe unprintables:
+As per ECMA-37, [DLE] is used to escape the normal meanings of [ENQ, ACK, NAK, SYN, ETB].
+ASON uses these sequences to encode structure metadata using terminal-safe C0 codes:
 
 ```
-[DLE ENQ] `^P ^E` 0x10,0x05 (TC5, quote)
-[DLE ACK] `^P ^F` 0x10,0x06 (TC6, list)
+[DLE ENQ] `^P ^E` 0x10,0x05 (quote)
+[DLE ACK] `^P ^F` 0x10,0x06 (list)
 ...
-[DLE NAK] `^P ^U` 0x10,0x15 (TC8, dictionary)
-[DLE SYN] `^P ^V` 0x10,0x16 (TC9, table)
-[DLE ETB] `^P ^W` 0x10,0x17 (TC10, array)
+[DLE NAK] `^P ^U` 0x10,0x15 (dictionary)
+[DLE SYN] `^P ^V` 0x10,0x16 (table)
+[DLE ETB] `^P ^W` 0x10,0x17 (array)
 ```
 
 ISO-646 also permits the following sequences, but these are forbidden in ASON (even at the application layer) to avoid any ambiguity with ASON structure:
 
 ```
-[DLE SOH] `^P ^A` 0x10,0x01 (TC1, forbidden)
-[DLE STX] `^P ^B` 0x10,0x02 (TC2, forbidden)
-[DLE ETX] `^P ^C` 0x10,0x03 (TC3, forbidden)
-[DLE EOT] `^P ^D` 0x10,0x04 (TC4, forbidden)
+[DLE SOH] `^P ^A` 0x10,0x01
+[DLE STX] `^P ^B` 0x10,0x02
+[DLE ETX] `^P ^C` 0x10,0x03
+[DLE EOT] `^P ^D` 0x10,0x04
 ```
 
 The sequence [DLE, DLE] is reserved for future use in the ASON metadata layer, but MAY be used at the application layer:
@@ -276,9 +293,6 @@ The sequence [DLE, DLE] is reserved for future use in the ASON metadata layer, b
 ```
 [DLE DLE] `^P ^P` 0x10,0x10 (TC7, reserved)
 ```
-
-[DLE, DLE] introduces an arbitrary-length sequence of characters for encoding novel metadata.
-No such sequences are currently defined.
 
 C0 control characters with standard meanings in the plaintext layer
 -------------------------------------------------------------------
@@ -288,25 +302,22 @@ If any escape sequences are used, they SHOULD be well-terminated and terminal-sa
 
 ```
 [BEL] `^G` 0x07 (opaque)
-[BS]  `^H` 0x08 (opaque)
-[HT]  `^I` 0x09 (whitespace)
-[LF]  `^J` 0x0a (linebreak)
-[VT]  `^K` 0x0b (linebreak)
-[FF]  `^L` 0x0c (linebreak)
-[CR]  `^M` 0x0d (linebreak)
-[SI]  `^N` 0x0e (opaque)
-[SO]  `^O` 0x0f (opaque)
+[BS]  `^H` 0x08 (format effector)
+[HT]  `^I` 0x09 (format effector)
+[LF]  `^J` 0x0a (format effector)
+[VT]  `^K` 0x0b (format effector)
+[FF]  `^L` 0x0c (format effector)
+[CR]  `^M` 0x0d (format effector)
+[SI]  `^N` 0x0e (ISO-2022)
+[SO]  `^O` 0x0f (ISO-2022)
 ...
-[ESC] `^[` 0x1b (opaque)
+[ESC] `^[` 0x1b (ISO-2022)
 ```
-
-Plaintext may also contain any byte in the range 0x20..0xff.
 
 C0 control characters forbidden
 -------------------------------
 
 These bytes MUST NOT appear anywhere in an ASON document.
-[EM]* MAY be used to indicate the end of the document, but is not considered part of the document itself.
 
 ```
 [NUL] `^@` 0x00
@@ -316,8 +327,6 @@ These bytes MUST NOT appear anywhere in an ASON document.
 [DC3] `^S` 0x13
 [DC4] `^T` 0x14
 ...
-[CAN] `^X` 0x18
-[EM]* `^Y` 0x19
 [SUB] `^Z` 0x1a
 ```
 
@@ -368,22 +377,24 @@ Special values:
 [NAK]    0x3d (false)       (ASCII 0x15)
 [SYN]    0x32 (padding)     (ASCII 0x16)
 [ETB]    0x26 (paragraph)   (ASCII 0x17)
+[CAN] ** 0x18 (start)
+[EM]  ** 0x19 (end)
 ```
 
-Format effectors:
+Opaque C0 controls:
 
 ```
 [BEL]    0x2f               (ASCII 0x07)
-[BS]     0x16 (opaque)      (ASCII 0x08)
-[HT]     0x05 (whitespace)  (ASCII 0x09)
-[LF]     0x25 (linebreak)   (ASCII 0x0a)
-[VT]  ** 0x0b (linebreak)
-[FF]  ** 0x0c (linebreak)
-[CR]  ** 0x0d (linebreak)
-[SI]  ** 0x0e (opaque)
-[SO]  ** 0x0f (opaque)
+[BS]     0x16 (format)      (ASCII 0x08)
+[HT]     0x05 (format)      (ASCII 0x09)
+[LF]     0x25 (format)      (ASCII 0x0a)
+[VT]  ** 0x0b (format)
+[FF]  ** 0x0c (format)
+[CR]  ** 0x0d (format)
+[SI]  ** 0x0e (ISO-2022)
+[SO]  ** 0x0f (ISO-2022)
 ...
-[ESC]    0x27 (opaque)      (ASCII 0x1b)
+[ESC]    0x27 (ISO-2022)    (ASCII 0x1b)
 ```
 
 The representation of [SYN] differs between ASCII (0x16) and EBCDIC (0x32), so ESON naturally has a distinct magic number (0x01,0x32,0x1f).
