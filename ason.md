@@ -122,9 +122,9 @@ The stext of a list [SOH SYN US DLE ACK] = `^A ^V ^_ ^P ^F` contains one or more
 A list with a single entry can be used to create a file magic number where no other structure is required (see below).
 If the list has no entries, then its stext SHOULD consist only of [ENQ].
 
-### Application
+### Object
 
-The stext of an application object [SOH SYN US DLE DLE] = `^A ^V ^_ ^P ^P` is application-defined.
+The stext of an object [SOH SYN US DLE DLE] = `^A ^V ^_ ^P ^P` is application-defined.
 It MAY use any combination of [FS, GS, RS, US] to delimit its stext, but MUST conform to ASON nesting rules.
 
 ### Dictionary
@@ -291,7 +291,7 @@ ASON uses these sequences to encode structure metadata using terminal-safe C0 co
 ```
 [DLE ENQ] `^P ^E` 0x10,0x05 (quote)
 [DLE ACK] `^P ^F` 0x10,0x06 (list)
-[DLE DLE] `^P ^P` 0x10,0x10 (application)
+[DLE DLE] `^P ^P` 0x10,0x10 (object)
 [DLE NAK] `^P ^U` 0x10,0x15 (dictionary)
 [DLE SYN] `^P ^V` 0x10,0x16 (table)
 [DLE ETB] `^P ^W` 0x10,0x17 (array)
