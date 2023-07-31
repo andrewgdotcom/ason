@@ -177,7 +177,7 @@ An ASON interpreter MAY search for this magic number at non-initial positions in
 For example, an ASON-aware script interpreter MAY ignore leading lines of the form `#!/path/to/executable\n`.
 IFF the magic number is found at a non-initial position it MUST either:
 
-* be preceded by two SYN characters, i.e. [SYN SYN SOH SYN US] = `^V ^V ^A ^V ^_`, and the interpretation of any preceding bytes is application-dependent. (cf IPTC-7901)
+* be preceded a CAN character, i.e. [CAN SOH SYN US] = `^X ^A ^V ^_`, and the interpretation of any preceding bytes is application-dependent.
 * be preceded only by a UTF-8 encoded byte-order mark (BOM) (see "USON" below).
 
 The presence of an [EM] character immediately following the [EOT] character of the outermost structure, i.e. [EOT EM] = `^D ^Y`, disables ASON interpretation for the rest of the file.
