@@ -80,9 +80,11 @@ where the delimiters are [RS, US] = `^^ ^_`.
 
 * The magic key [SYN] = `^V` MUST be present in the htext and MUST be the first key.
     It takes a value that indicates the format of the structure (see below).
-* The key [SYN =] = `^V =` takes a plaintext value which is the name of the structure.
-* The key [SYN -] = `^V -` takes a plaintext value which is a caption for the structure.
-    It may appear in either or both of the htext or ftext.
+* The key [SYN =] = `^V =` takes a plaintext value which is a unique identifier for the structure.
+    If this key appears in both the htext and ftext of a structure, the values MUST be equal.
+    An application MAY use this to detect and/or recover from violations of ASON nesting rules.
+* The key [SYN -] = `^V -` takes a plaintext value which is a caption or description of the structure.
+    It MAY appear in either or both of the htext or ftext, and SHOULD be human-readable.
 
 Keys starting with [SYN] are reserved to ASON.
 Applications may define their own htext keys, so long as they contain only ASCII graphical or extended-ASCII characters.
