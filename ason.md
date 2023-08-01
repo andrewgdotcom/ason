@@ -70,7 +70,7 @@ Structure encoding
 
 A structure consists of a header text (htext) and a structured text (stext), with an optional footer text (ftext), delimited by [SOH, STX, ETX, EOT] = `^A ^B ^C ^D` in the form:
 
-    SOH htext STX stext [ ETX ftext ] EOT
+    SOH htext [ STX stext ] [ ETX ftext ] EOT
 
 Each of the three texts consists of one or more fields, delimited by the information separators [FS, GS, RS, US] = `^\ ^] ^^ ^_` .
 
@@ -97,15 +97,18 @@ Htext and ftext values MUST NOT contain C0 characters.
 
 ### stext
 
-The stext is a sequence of zero or more fields.
-The nature of the fields differs between structured text formats (see below).
+The nature of the stext fields differs between structured text formats (see below).
+
+* If the stext is empty, the structure contains a single empty field.
+* If the stext is missing, the structure contains no data.
 
 ### Nesting
 
-A structure MAY be nested within another structure's stext.
-A structure MUST NOT be nested within an htext or ftext.
-All ASON texts used in the stext must be well-formed and properly nested.
-Any locking-shift or escape sequences MUST be properly reverted or terminated.
+* A structure MAY be nested within another structure's stext.
+* A structure MUST NOT be nested within an htext or ftext.
+* All ASON texts used in the stext must be well-formed and properly nested.
+* Any locking-shift or escape sequences MUST be properly reverted or terminated.
+
 Any data that violates the above rules MUST be binary-to-text encoded (see below).
 
 Note that child structures MUST NOT inherit any metadata (including ISO-2022 encodings) from their parent.
@@ -116,6 +119,7 @@ Structured text formats
 
 Structured text formats are denoted by a key-value pair where the key is [SYN] and the value is a metadata string.
 The metadata string consists of a [DLE] character followed by a character from the set [ENQ, ACK, DLE, NAK, SYN, ETB].
+Fields may contain the empty string, the `undefined` character [ENQ], or be missing entirely; an application MAY treat them as equivalent.
 
 ### Quote
 
@@ -125,22 +129,25 @@ Any enclosed ASON structure MUST properly nest but SHOULD NOT be interpreted.
 ### List
 
 The stext of a list [SOH SYN US DLE ACK] = `^A ^V ^_ ^P ^F` contains one or more fields of ASON text, separated by [US].
-A list with a single entry can be used to create a file magic number where no other structure is required (see below).
 
 ### Object
 
 The stext of an object [SOH SYN US DLE DLE] = `^A ^V ^_ ^P ^P` is application-defined.
-It MAY use any combination of [FS, GS, RS, US] to delimit its stext, but MUST conform to ASON nesting rules.
+It MAY use any combination of [FS, GS, RS, US] to delimit its fields.
+An object with a single field can be used to create a file magic number where no other structure is required (see below).
 
 ### Dictionary
 
 The stext of a dictionary [SOH SYN US DLE NAK] = `^A ^V ^_ ^P ^U` is represented as
 
-    key1 US value1 [ RS key2 US value2 ... ]
+    key1 [ US value1 ] [ RS key2 [ US value2 ] ... ]
 
 It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same format as the htext and ftext).
-Empty keys are forbidden, and empty values MUST be indicated by [ENQ] (undefined).
-Otherwise, keys are plaintext and values are ASON text.
+
+* Each record SHOULD contain one key and at most one value.
+* Keys SHOULD be unique.
+* Otherwise, keys are plaintext and values are ASON text.
+* Each record SHOULD contain one key and at most one value.
 
 ### Table
 
@@ -149,19 +156,32 @@ The stext of a table [SOH SYN US DLE SYN] = `^A ^V ^_ ^P ^V` is represented as
     key1 US key2 ... GS value(1,key1) US value(1,key2) ... [ RS value(2,key1) US value(2,key2) ... ]
 
 The group separator [GS] is used to separate the first row, containing the column names (keys), from the rows (records) containing the values.
-Empty keys are forbidden, and empty values MUST be indicated by [ENQ] (undefined).
-Otherwise, keys are plaintext and values are ASON text.
+
+* Keys SHOULD be unique.
+* Otherwise, keys are plaintext and values are ASON text.
+* Tables MAY be ragged-right, however records SHOULD NOT contain more values than the number of columns.
 
 ### Array
 
-The stext of an array [SOH SYN US DLE ETB] = `^A ^V ^_ ^P ^W` is represented as
+The stext of an array [SOH SYN US [US ...] DLE ETB] = `^A ^V ^_ [US ...] ^P ^W` is represented as
 
     value(1,1) [ US value(1,2) ... ] [ RS value(2,1) [ US value(2,2) ... ] ... ]
 
-It can have up to four dimensions by using all of [FS, GS, RS, US]; up to sixteen by using the big-endian two-character sequences [FS FS, FS GS, FS RS,... US GS, US RS, US US]; up to 64 by using three-character sequences etc.
-Separator sequences of differing lengths MUST NOT be used in the same array.
-Empty cells MUST be indicated by [ENQ] (undefined), otherwise the cell contents are ASON text.
-Arrays MAY be ragged-right if the application allows it.
+It can have up to four dimensions by using all of [FS, GS, RS, US].
+
+* Values are ASON text.
+* Arrays MAY be ragged-right.
+
+An array MAY have more than four dimensions by using multi-character sequences as separators:
+
+* up to 16 by using the big-endian two-character sequences [FS FS, FS GS, FS RS, ... US GS, US RS, US US]
+* up to 64 by using three-character sequences [FS FS FS, FS FS GS, ... US US GS, US US RS, US US US]
+* etc.
+
+If multi-character separators are used in the stext, they MUST also be used in the htext and ftexts:
+
+* The number of [US] characters after the [SYN] character in the first header record indicates the length of the separator sequences in the remainder of the array.
+* Separator sequences of differing lengths MUST NOT be used in the same array.
 
 Field encoding
 --------------
