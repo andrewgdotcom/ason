@@ -227,6 +227,8 @@ We therefore allow ASON to have optional embedded compatibility characters that 
 For example, the plaintext preceding [CAN] might contain whitespace indentation, and the plaintext following [EM] might contain a line break.
 This allows a non-ASON editor or terminal to display structured data in human-readable form, while the ASON structure encodes the same information in machine-readable form.
 
+The sequence [CAN EM] can also be used to distinguish between undefined and defined-but-empty string values.
+
 ASON-aware text display/edit
 ----------------------------
 
