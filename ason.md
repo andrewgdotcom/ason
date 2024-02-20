@@ -23,6 +23,7 @@ References
     * DLE sequences are defined in ECMA-37: https://www.ecma-international.org/publications-and-standards/standards/ecma-37/
     * A similar application of transmission control characters can be found in IPTC-7901: https://www.iptc.org/std/IPTC7901/1.0/specification/7901V5.pdf
 * Base64 and quoted-printable encodings are defined in RFC-2045: https://datatracker.ietf.org/doc/html/rfc2045
+* A (joke?) encoding similar to ASON was previously proposed by Terence Eden: https://shkspr.mobi/blog/2017/03/kyli-because-it-is-superior-to-json/
 
 Primitive encoding
 ------------------
