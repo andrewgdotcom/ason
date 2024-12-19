@@ -29,13 +29,13 @@ Primitive encoding
 ------------------
 
 ASON text may contain any byte that is not explicitly forbidden.
-The six forbidden characters have common special meanings when text is stored in memory or a file, or transmitted over a data link, and are therefore excluded on safety grounds.
+The seven forbidden characters have common special meanings when text is stored in memory or a file, or transmitted over a data link, and are therefore excluded on safety grounds.
 
-* "ASON forbidden" - 0x00 [NUL], 0x11..0x14 [DC1-4], or 0x1a [SUB]
+* "ASON forbidden" - 0x00 [NUL], 0x04 [EOT], 0x11..0x14 [DC1-4], or 0x1a [SUB]
 
 A further eight bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
 
-* "ASON structure" - 0x01..0x04 [SOH, STX, ETX, EOT] and 0x0c..0x0f [FS, GS, RS, US]
+* "ASON structure" - 0x01..0x03 [SOH, STX, ETX] and 0x0c..0x0f [FS, GS, RS, US]
 
 Two bytes indicate that leading or trailing data should be discarded by an ASON-aware application (see below).
 
@@ -69,32 +69,31 @@ In ASON plaintext, the following standard meanings are defined:
 Structure encoding
 ------------------
 
-A structure consists of a header text (htext) and a structured text (stext), with an optional footer text (ftext), delimited by [SOH, STX, ETX, EOT] = `^A ^B ^C ^D` in the form:
+A structure consists of a header text (htext) and a structured text (stext), delimited by [SOH, STX, ETX] = `^A ^B ^C` in the form:
 
-    SOH htext [ STX stext ] [ ETX ftext ] EOT
+    SOH htext STX stext ETX
 
-Each of the three texts consists of one or more fields, delimited by the information separators [FS, GS, RS, US] = `^\ ^] ^^ ^_` .
+The htext and stext consist of one or more fields, delimited by the information separators [FS, GS, RS, US] = `^\ ^] ^^ ^_` .
 
-### htext and ftext
+### htext
 
-The mandatory htext and optional ftext are sequences of one or more key-value records of the form:
+The htext is a sequence of one or more key-value records of the form:
     
     key US value [ RS key US value ... ]
     
 where the field delimiters are [RS, US] = `^^ ^_`.
 
 * The magic key [SYN] = `^V` MUST be present in the htext and MUST be the first key.
-    It MUST NOT appear in the ftext.
     It takes a value that indicates the format of the structure (see below).
 * The key [SYN =] = `^V =` takes a plaintext value which is a unique identifier for the structure.
-    If this key appears in both the htext and ftext of a structure, the values MUST be equal.
-    An application MAY use this to detect, and possibly recover from, nesting errors.
 * The key [SYN -] = `^V -` takes a plaintext value which is a caption or description of the structure.
-    It MAY appear in either or both of the htext or ftext, and SHOULD be human-readable.
+    The value SHOULD be human-readable.
+* The key [SYN !] = `^V !` takes a plaintext value which indicates the schema for an object structure (see below)
+    The value SHOULD be globally unique, and reverse-domain format is RECOMMENDED.
 
 Keys starting with [SYN] are reserved to ASON.
-Applications MAY define their own htext/ftext keys, but they MUST NOT contain C0 characters.
-Htext and ftext values MUST NOT contain C0 characters.
+Applications MAY define their own htext keys, but they MUST NOT contain C0 characters.
+Htext values MUST NOT contain C0 characters.
 
 ### stext
 
@@ -106,7 +105,7 @@ The nature of the stext fields differs between structured text formats (see belo
 ### Nesting
 
 * A structure MAY be nested within another structure's stext.
-* A structure MUST NOT be nested within an htext or ftext.
+* A structure SHOULD NOT be nested within an htext.
 * All ASON texts used in the stext must be well-formed and properly nested.
 * Any locking-shift or escape sequences MUST be properly reverted or terminated.
 
@@ -130,12 +129,14 @@ Any enclosed ASON structure MUST properly nest but SHOULD NOT be interpreted.
 ### List
 
 The stext of a list [SOH SYN US DLE ACK] = `^A ^V ^_ ^P ^F` contains one or more fields of ASON text, separated by [US].
+A list with a single field MAY be used to create a file magic number where no other structure is required (see below).
 
 ### Object
 
 The stext of an object [SOH SYN US DLE DLE] = `^A ^V ^_ ^P ^P` is application-defined.
 It MAY use any combination of [FS, GS, RS, US] to delimit its fields.
-An object with a single field can be used to create a file magic number where no other structure is required (see below).
+
+It is RECOMMENDED that the schema of an object be indicated in the htext using the key `^V !` (see above).
 
 ### Dictionary
 
@@ -143,7 +144,7 @@ The stext of a dictionary [SOH SYN US DLE NAK] = `^A ^V ^_ ^P ^U` is represented
 
     key1 [ US value1 ] [ RS key2 [ US value2 ] ... ]
 
-It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same format as the htext and ftext).
+It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same format as the htext).
 
 * Each record SHOULD contain one key and at most one value.
 * Keys SHOULD be unique.
@@ -164,7 +165,7 @@ The group separator [GS] is used to separate the first row, containing the colum
 
 ### Array
 
-The stext of an array [SOH SYN US [US ...] DLE ETB] = `^A ^V ^_ [US ...] ^P ^W` is represented as
+The stext of an array [SOH SYN US [US ...] DLE ETB] = `^A ^V ^_ [^_ ...] ^P ^W` is represented as
 
     value(1,1) [ US value(1,2) ... ] [ RS value(2,1) [ US value(2,2) ... ] ... ]
 
@@ -179,7 +180,7 @@ An array MAY have more than four dimensions by using multi-character sequences a
 * up to 64 by using three-character sequences [FS FS FS, FS FS GS, ... US US GS, US US RS, US US US]
 * etc.
 
-If multi-character separators are used in the stext, they MUST also be used in the htext and ftexts:
+If multi-character separators are used in the stext, they MUST also be used in the htext:
 
 * The number of [US] characters after the [SYN] character in the first header record indicates the length of the separator sequences in the remainder of the array.
 * Separator sequences of differing lengths MUST NOT be used in the same array.
@@ -188,7 +189,7 @@ Field encoding
 --------------
 
 Data that is not valid ASON text MUST be binary-to-text encoded.
-If a field's content begins with a [DLE] sequence, it indicates the encoding used for its contents:
+If a field's content begins (after any [CAN] excisor) with a [DLE] sequence, it indicates the encoding used for its contents:
 
 * [DLE ENQ] = `^P ^E` quoted-printable
 * [DLE ACK] = `^P ^F` base64
@@ -215,9 +216,9 @@ For example, an ASON-aware script interpreter MAY ignore leading lines of the fo
 IFF the magic number is found at a non-initial position it MUST either:
 
 * be preceded a CAN character, i.e. [CAN SOH SYN US] = `^X ^A ^V ^_`, and the interpretation of any preceding bytes is application-dependent.
-* be preceded only by a UTF-8 encoded byte-order mark (BOM) (see "USON" below).
+* be preceded only by an initial byte-order mark (BOM) (see "USON" below).
 
-The presence of an [EM] character immediately following the [EOT] character of the outermost structure, i.e. [EOT EM] = `^D ^Y`, disables ASON interpretation for the rest of the file.
+The presence of an [EM] character immediately following the [ETX] character of the outermost structure, i.e. [ETX EM] = `^C ^Y`, disables ASON interpretation for the rest of the file.
 The meaning of any subsequent bytes is application-dependent.
 An application SHOULD append [EM] to the end of an emitted ASON document, and MUST do so if there are any subsequent bytes in the file.
 An application MAY require a trailing [EM] to verify non-truncation of input data.
@@ -245,7 +246,7 @@ We therefore allow ASON to have optional embedded compatibility characters that 
 
     structure [ plaintext CAN ] [ encoding ] data [ EM plaintext ] structure
 
-For example, the plaintext preceding [CAN] might contain whitespace indentation, and the plaintext following [EM] might contain a line break.
+For example, the plaintext preceding [CAN] might contain whitespace indentation, and the plaintext following [EM] might contain a comment and/or line break.
 This allows a non-ASON editor or terminal to display structured data in human-readable form, while the ASON structure encodes the same information in machine-readable form.
 
 The sequence [CAN EM] can also be used to distinguish between undefined and defined-but-empty string values.
@@ -265,7 +266,7 @@ An ASON-aware text input system SHOULD allow the user to enter ASON structure in
 
 * A typed Ctrl-A SHOULD indicate a new header and a typed Ctrl-B SHOULD end the header and start the text.
     * The editor SHOULD autocomplete the magic key and offer the user a menu of structure types.
-    * The editor SHOULD autocomplete the trailing [EOT] so that the user does not have to type it (given that Ctrl-D often causes connections to drop when typed).
+    * The editor SHOULD autocomplete the trailing [ETX] so that the user does not have to type Ctrl-C.
 * [FS, GS, RS, US] SHOULD be entered using Ctrl-4 to Ctrl-7
 
 An ASON-aware IDE MAY also conform to the following:
@@ -291,7 +292,6 @@ They MUST NOT appear unless as part of a well-formed and properly nested ASON st
 [SOH] `^A` 0x01 (start header)
 [STX] `^B` 0x02 (start text)
 [ETX] `^C` 0x03 (end text)
-[EOT] `^D` 0x04 (end footer)
 [FS]  `^\` 0x1c (file separator)
 [GS]  `^]` 0x1d (group separator)
 [RS]  `^^` 0x1e (record separator)
@@ -329,15 +329,15 @@ As per ECMA-37, [DLE] is used to escape the normal meanings of [ENQ, ACK, DLE, N
 ASON uses these sequences to denote structure and binary-to-text encoding metadata using terminal-safe C0 codes:
 
 ```
-[DLE ENQ] `^P ^E` 0x10,0x05 (quote, quoted-printable encoding)
-[DLE ACK] `^P ^F` 0x10,0x06 (list, base64 encoding)
-[DLE DLE] `^P ^P` 0x10,0x10 (object, application-defined encoding)
-[DLE NAK] `^P ^U` 0x10,0x15 (dictionary, no encoding)
-[DLE SYN] `^P ^V` 0x10,0x16 (table)
-[DLE ETB] `^P ^W` 0x10,0x17 (array)
+[DLE ENQ] `^P ^E` 0x10,0x05 (quote structure, quoted-printable encoding)
+[DLE ACK] `^P ^F` 0x10,0x06 (list structure, base64 encoding)
+[DLE DLE] `^P ^P` 0x10,0x10 (object structure, application-defined encoding)
+[DLE NAK] `^P ^U` 0x10,0x15 (dictionary structure, no encoding)
+[DLE SYN] `^P ^V` 0x10,0x16 (table structure, RESERVED encoding)
+[DLE ETB] `^P ^W` 0x10,0x17 (array structure, RESERVED encoding)
 ```
 
-The following valid DLE sequences are forbidden in ASON (even at the application layer) to avoid any ambiguity with ASON structure:
+The following valid DLE sequences are forbidden in ASON (even at the application layer):
 
 ```
 [DLE SOH] `^P ^A` 0x10,0x01
@@ -375,6 +375,7 @@ These bytes MUST NOT appear anywhere in an ASON document.
 
 ```
 [NUL] `^@` 0x00
+[EOT] `^D` 0x04
 [DC1] `^Q` 0x11
 [DC2] `^R` 0x12
 [DC3] `^S` 0x13
@@ -418,6 +419,7 @@ Forbidden characters:
 [DC2] ** 0x12
 [DC3] ** 0x13
 [DC4] ** 0x14
+[EOT]    0x37 (ASCII 0x04)
 [SUB]    0x3f (ASCII 0x1a)
 ```
 
@@ -427,7 +429,6 @@ Structure controls:
 [SOH] ** 0x01 (start header)
 [STX] ** 0x02 (start text)
 [ETX] ** 0x03 (end text)
-[EOT]    0x37 (end footer)  (ASCII 0x04)
 [FS]  ** 0x1c (file separator)
 [GS]  ** 0x1d (group separator)
 [RS]  ** 0x1e (record separator)
