@@ -14,6 +14,8 @@ ASON does this by using the C0 information separator characters to impose a hier
 ASON is a pure 7-bit ASCII encoding, and is therefore automatically compatible with 8-bit extended-ASCII encodings such as ISO-2022 and UTF-8.
 It can also contain arbitrary data via binary-to-text encoding (e.g. base64, quoted-printable).
 
+ASON is to ASCII what REST is to HTTP.
+
 References
 ----------
 
@@ -33,7 +35,7 @@ The seven forbidden characters have common special meanings when text is stored 
 
 * "ASON forbidden" - 0x00 [NUL], 0x04 [EOT], 0x11..0x14 [DC1-4], or 0x1a [SUB]
 
-A further eight bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
+A further seven bytes are reserved to the ASON structure layer and have the same meaning regardless of context.
 
 * "ASON structure" - 0x01..0x03 [SOH, STX, ETX] and 0x0c..0x0f [FS, GS, RS, US]
 
