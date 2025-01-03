@@ -9,7 +9,7 @@ ASCII structured object notation (ASON) is a non-binary serialised data format w
 * Plaintext data can be trivially embedded inside an ASON document.
 * Any ASON document can be trivially embedded inside another ASON document.
 
-ASON does this by using the C0 information separator characters to impose a hierarchical structure on textual data, and reusing the C0 transmission control characters to convey metatextual information, similar to IPTC-7901.
+ASON does this by using the C0 information separator characters to impose a hierarchical structure on textual data, and the C0 transmission control characters to convey metatextual information.
 
 ASON is a pure 7-bit ASCII encoding, and is therefore automatically compatible with 8-bit extended-ASCII encodings such as ISO-2022 and UTF-8.
 It can also contain arbitrary data via binary-to-text encoding (e.g. base64, quoted-printable).
@@ -23,8 +23,8 @@ References
 * C0 control codes are defined in ISO-6429/ECMA-48: https://www.ecma-international.org/publications-and-standards/standards/ecma-48/
 * Transmission control characters TC1-TC10 are defined in ISO-1745/ECMA-16 : https://www.ecma-international.org/publications-and-standards/standards/ecma-16/
     * DLE sequences are defined in ECMA-37: https://www.ecma-international.org/publications-and-standards/standards/ecma-37/
-    * A similar application of transmission control characters can be found in IPTC-7901: https://www.iptc.org/std/IPTC7901/1.0/specification/7901V5.pdf
 * Base64 and quoted-printable encodings are defined in RFC-2045: https://datatracker.ietf.org/doc/html/rfc2045
+* A similar application of C0 control characters can be found in IPTC-7901: https://www.iptc.org/std/IPTC7901/1.0/specification/7901V5.pdf
 * A (joke?) encoding similar to ASON was previously proposed by Terence Eden: https://shkspr.mobi/blog/2017/03/kyli-because-it-is-superior-to-json/
 
 Primitive encoding
