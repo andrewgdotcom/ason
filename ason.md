@@ -67,13 +67,14 @@ In ASON plaintext, the following standard meanings are defined:
 * [EM] is used to indicate the end of ASON text; any data after it in the current field MUST be discarded.
 
 [CAN, EM] are also used to indicate the start and end of an ASON document embedded within a larger file.
+Excisor characters may also be used to explicitly disambiguate a zero-length string (see below).
 
 Structure encoding
 ------------------
 
-A structure consists of a header text (htext) and a structured text (stext), delimited by [SOH, STX, ETX] = `^A ^B ^C` in the form:
+A structure consists of a header text (htext) and an optional structured text (stext), delimited by [SOH, STX, ETX] = `^A ^B ^C` in the form:
 
-    SOH htext STX stext ETX
+    SOH htext [ STX stext ] ETX
 
 The htext and stext consist of one or more fields, delimited by the information separators [FS, GS, RS, US] = `^\ ^] ^^ ^_` .
 
@@ -90,8 +91,9 @@ where the field delimiters are [RS, US] = `^^ ^_`.
 * The key [SYN =] = `^V =` takes a plaintext value which is a unique identifier for the structure.
 * The key [SYN -] = `^V -` takes a plaintext value which is a caption or description of the structure.
     The value SHOULD be human-readable.
-* The key [SYN !] = `^V !` takes a plaintext value which indicates the schema for an object structure (see below)
+* The key [SYN !] = `^V !` takes a plaintext value which indicates the schema for an object structure and/or any application-defined field encodings used in the structure (see below).
     The value SHOULD be globally unique, and reverse-domain format is RECOMMENDED.
+    An htext schema applies only to the current structure, and is not inherited by any structures embedded in its stext.
 
 Keys starting with [SYN] are reserved to ASON.
 Applications MAY define their own htext keys, but they MUST NOT contain C0 characters.
@@ -107,9 +109,9 @@ The nature of the stext fields differs between structured text formats (see belo
 ### Nesting
 
 * A structure MAY be nested within another structure's stext.
-* A structure SHOULD NOT be nested within an htext.
-* All ASON texts used in the stext must be well-formed and properly nested.
-* Any locking-shift or escape sequences MUST be properly reverted or terminated.
+* A structure MUST NOT be nested within an htext.
+* All ASON texts used in the stext MUST be well-formed and properly nested.
+* Any ISO-2022 locking-shift or escape sequences MUST be properly reverted or terminated at the end of each field, and before each embedded structure.
 
 Any data that violates the above rules MUST be binary-to-text encoded (see below).
 
@@ -119,9 +121,17 @@ This ensures that ASON documents can be trivially embedded within each other wit
 Structured text formats
 -----------------------
 
-Structured text formats are denoted by a key-value pair where the key is [SYN] and the value is a metadata string.
+Structured text formats are denoted by a key-value pair in the first record of the htext, where the key is [SYN] and the value is a metadata string.
 The metadata string consists of a [DLE] character followed by a character from the set [ENQ, ACK, DLE, NAK, SYN, ETB].
-Fields may contain the empty string, the `undefined` character [ENQ], or be missing entirely; an application MAY treat them as equivalent.
+
+Fields may contain the empty string, the `undefined` character [ENQ], or be missing entirely.
+Note that care MUST be taken to denote empty strings in an unambiguous manner.
+To prevent zero-length values from being misinterpreted as multi-character data separators (see below), zero-length fields SHOULD contain either:
+
+* at least one excisor character to delimit the empty string
+* an [ENQ] character to represent "undefined"
+
+An application MAY distinguish between zero-length and undefined values.
 
 ### Quote
 
@@ -139,6 +149,7 @@ The stext of an object [SOH SYN US DLE DLE] = `^A ^V ^_ ^P ^P` is application-de
 It MAY use any combination of [FS, GS, RS, US] to delimit its fields.
 
 It is RECOMMENDED that the schema of an object be indicated in the htext using the key `^V !` (see above).
+This schema SHOULD define any application-defined field encodings that appear directly in the object.
 
 ### Dictionary
 
@@ -146,12 +157,13 @@ The stext of a dictionary [SOH SYN US DLE NAK] = `^A ^V ^_ ^P ^U` is represented
 
     key1 [ US value1 ] [ RS key2 [ US value2 ] ... ]
 
-It uses [US] to separate the keys from the values, and [RS] to delimit the records (this is the same format as the htext).
+It uses [US] to separate the keys from the values, and [RS] to delimit the records.
 
 * Each record SHOULD contain one key and at most one value.
 * Keys SHOULD be unique.
 * Otherwise, keys are plaintext and values are ASON text.
-* Each record SHOULD contain one key and at most one value.
+
+Note that an htext has the same format as a dictionary's stext, but with additional constraints on the keys and values.
 
 ### Table
 
@@ -182,11 +194,6 @@ An array MAY have more than four dimensions by using multi-character sequences a
 * up to 64 by using three-character sequences [FS FS FS, FS FS GS, ... US US GS, US US RS, US US US]
 * etc.
 
-If multi-character separators are used in the stext, they MUST also be used in the htext:
-
-* The number of [US] characters after the [SYN] character in the first header record indicates the length of the separator sequences in the remainder of the array.
-* Separator sequences of differing lengths MUST NOT be used in the same array.
-
 Field encoding
 --------------
 
@@ -199,7 +206,7 @@ If a field's content begins (after any [CAN] excisor) with a [DLE] sequence, it 
 * [DLE NAK] = `^P ^U` none (default)
 
 The `base64` and `quoted-printable` encodings are as defined in RFC 2045.
-Applications SHOULD support `base64`, and MAY support `quoted-printable`.
+Applications SHOULD support `base64`, and MAY support `quoted-printable` and/or `application-defined`.
 If the data itself begins with a [DLE] character but is not going to be encoded, it MUST be prefixed by an explicit `none` encoding indicator.
 
 
@@ -211,19 +218,25 @@ Identification
 
 An ASON document MUST begin with the magic number [SOH SYN US] = `^A ^V ^_` (0x01,0x16,0x1f).
 This is the start of an ASON structure, and is sufficient to uniquely identify an ASON document.
-[SYN] was chosen as the mandatory first key in order to produce a reliable magic number.
+[SYN] was chosen as the mandatory first key in order to produce a reliable file magic number.
 
 An ASON interpreter MAY search for this magic number at non-initial positions in a stream or file if the application allows it.
 For example, an ASON-aware script interpreter MAY ignore leading lines of the form `#!/path/to/executable\n`.
-IFF the magic number is found at a non-initial position it MUST either:
+If ASON data starts at a non-initial file position it MUST either:
 
 * be preceded a CAN character, i.e. [CAN SOH SYN US] = `^X ^A ^V ^_`, and the interpretation of any preceding bytes is application-dependent.
 * be preceded only by an initial byte-order mark (BOM) (see "USON" below).
 
-The presence of an [EM] character immediately following the [ETX] character of the outermost structure, i.e. [ETX EM] = `^C ^Y`, disables ASON interpretation for the rest of the file.
+Concatenation of documents
+--------------------------
+
+An ASON file or data stream MAY contain one or more concatenated ASON structures at the top level; these MUST be interpreted as independent documents.
+An [EM] character immediately following the outermost [ETX] character of an ASON document disables ASON interpretation for the rest of the file or data stream.
 The meaning of any subsequent bytes is application-dependent.
-An application SHOULD append [EM] to the end of an emitted ASON document, and MUST do so if there are any subsequent bytes in the file.
+
+An application SHOULD append [EM] to the end of the final (or only) ASON document in a file or data stream, and MUST do so if there is any subsequent non-ASON data.
 An application MAY require a trailing [EM] to verify non-truncation of input data.
+When concatenating multiple ASON documents, any intervening non-ASON data, including excisors, MUST be removed.
 
 Graceful degradation
 --------------------
@@ -251,7 +264,7 @@ We therefore allow ASON to have optional embedded compatibility characters that 
 For example, the plaintext preceding [CAN] might contain whitespace indentation, and the plaintext following [EM] might contain a comment and/or line break.
 This allows a non-ASON editor or terminal to display structured data in human-readable form, while the ASON structure encodes the same information in machine-readable form.
 
-The sequence [CAN EM] can also be used to distinguish between undefined and defined-but-empty string values.
+An excisor-only byte string such as [CAN, EM, CAN EM] can be used to explicitly denote an empty string value where it would otherwise be ambiguous.
 
 ASON-aware text display/edit
 ----------------------------
