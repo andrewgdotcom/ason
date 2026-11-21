@@ -1,3 +1,5 @@
+A collection of simple, flexible, and backwards-compatible data formats.
+
 # ASON
 
 [ASCII Structured Object Notation](ason.md), a terminal-safe binary serialisation format.
