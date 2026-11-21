@@ -49,10 +49,11 @@ In ASON plaintext, the terminal-safe special values default to the following mea
 * Boolean values are denoted by [ACK] (true) and [NAK] (false)
 * Undefined values are denoted by [ENQ]
 * Terminal-safe escape sequences are introduced by [DLE]
-* Special processing is indicated by [SYN]
 * Paragraph breaks are denoted by [ETB], as per IPTC-7901
 
 ASON-aware applications MAY redefine these for their own purposes.
+
+In addition, ASON considers [SYN] as a plaintext character, however its use is reserved to ASON itself.
 
 ### Excisors
 
@@ -122,12 +123,14 @@ Field encoding
 --------------
 
 Data that is not valid ASON text MUST be Base64 encoded.
-If a field's content begins (after any [CAN] excisor) with a magic sequence, it indicates the encoding used for its contents:
+If a field's content contains a magic sequence, it indicates the encoding used for the subsequent bytes:
 
 * [SYN ACK] = `^V ^F` base64
 * [SYN NAK] = `^V ^U` none (default)
 
-The `base64` encoding is as defined in RFC 2045, and embedded whitespace is permitted.
+The Base64 encoding is as defined in RFC 2045, and embedded whitespace is permitted.
+Embedded Base64 MUST be prefixed by [SYN ACK], which MAY appear anywhere in the plaintext.
+Base64 is terminated by either an explicit [SYN NAK], or by the next ASON structure character, whichever comes first.
 
 Concatenation of files
 ----------------------
@@ -176,7 +179,7 @@ C0 control characters used for compatibility with non-ASON applications
 C0 control characters with special meanings in the plaintext layer
 ------------------------------------------------------------------
 
-The following control characters are understood by ASON at the metadata layer with these meanings, and MAY be used at the application layer with these or other meanings:
+The following control characters are understood by ASON at the metadata layer with these meanings, and MAY be used at the application layer (aside from [SYN]):
 
 ```
 [ENQ] `^E` 0x05 (undefined)
@@ -186,9 +189,6 @@ The following control characters are understood by ASON at the metadata layer wi
 [SYN] `^V` 0x16 (magic)
 [ETB] `^W` 0x17 (paragraph)
 ```
-
-Any of these characters appearing in an encoded value MAY be prefixed by a [DLE] character to prevent interpretation by the ASON (or ASONDOC) layer.
-Otherwise, the entire value MUST be Base64 encoded.
 
 C0 control characters with standard meanings in the plaintext layer
 -------------------------------------------------------------------
