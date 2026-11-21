@@ -6,8 +6,8 @@ ASCII structured object notation (ASON) is a non-binary serialised data format w
 * It is human-readable and -writable (with suitable editor support).
 * It can be handled safely by non-ASON-aware text applications, including terminal emulators.
 * It minimizes the need for escape sequences and quoting.
-* Plaintext data can be trivially embedded inside an ASON document.
-* Any ASON document can be trivially embedded inside another ASON document.
+* Plaintext data can be trivially embedded inside an ASON data stream.
+* Any ASON data stream can be trivially embedded inside another ASON data stream.
 
 ASON does this by using the C0 information separator (IS) characters to impose a hierarchical structure on textual data, and the C0 transmission control (TC) characters to convey metatextual information.
 
@@ -32,7 +32,7 @@ Two bytes indicate that leading or trailing data should be discarded by an ASON-
 
 * "ASON excisor" - 0x18, 0x19 [CAN, EM] (see below)
 
-"ASON plaintext" is any other sequence of one or more bytes.
+"ASON plaintext" is any other sequence of bytes.
 These are further classified:
 
 * "Terminal-safe special value" - 0x05 [ENQ], 0x06 [ACK], 0x10 [DLE], or 0x15..0x17 [NAK, SYN, ETB] (see below)
@@ -65,17 +65,17 @@ Note that excisor characters MAY appear inside ASON values; their interpretation
 Structure encoding
 ------------------
 
-A structure consists of a header text (htext) and an optional structured text (stext), delimited by [SOH, STX, ETX] = `^A ^B ^C` in the form:
+A structure consists of a header text (htext) and zero or more optional structured text (stext) sections, delimited by [SOH, STX, ETX] = `^A ^B ^C` in the form:
 
-    SOH htext [ STX stext ] ETX
+    SOH htext [ STX stext [ STX stext ... ]] ETX
 
-The htext and stext consist of one or more fields, delimited by the information separators [FS, GS, RS, US] = `^\ ^] ^^ ^_` .
+The htext and stexts consist of zero or more fields, delimited by the information separators [FS, GS, RS, US] = `^\ ^] ^^ ^_` .
 
 ### htext
 
-The htext is a sequence of one or more key-value records of the form:
+The htext is a sequence of zero or more key-value records of the form:
     
-    key US value [ RS key US value ... ]
+    [ key US value [ RS key US value ... ] ]
     
 where the field delimiters are [RS, US] = `^^ ^_`.
 
@@ -117,7 +117,7 @@ An application MAY distinguish between zero-length and undefined fields.
 Any data that violates the above rules MUST be Base64 encoded (see below).
 
 Note that child structures MUST NOT inherit any metadata (including ISO-2022 encodings) from their parent.
-This ensures that ASON documents can be trivially embedded within each other without altering their semantics.
+This ensures that ASON data streams can be trivially embedded within each other without altering their semantics.
 
 Field encoding
 --------------
@@ -137,10 +137,10 @@ Concatenation of files
 
 An ASON file or data stream MAY contain one or more concatenated ASON structures at the top level; these MUST be interpreted as independent files.
 For clarity, they SHOULD be separated by an [FS] character.
-An [EM] character immediately following the outermost [ETX] character of an ASON document disables ASON interpretation for the rest of the file or data stream.
+An [EM] character immediately following the outermost [ETX] character of an ASON structure disables ASON interpretation for the rest of the file or data stream.
 The meaning of any subsequent bytes is application-dependent.
 
-An application SHOULD append [EM] to the end of the final (or only) ASON document in a file or data stream, and MUST do so if there is any subsequent non-ASON data.
+An application SHOULD append [EM] to the end of the final (or only) ASON structure in a file or data stream, and MUST do so if there is any subsequent non-ASON data.
 An application MAY require a trailing [EM] to verify non-truncation of input data.
 When concatenating multiple ASON files, any intervening non-ASON data, including excisors, MUST be removed.
 
@@ -213,7 +213,7 @@ If any locking-shift or escape sequences are used, they SHOULD be well-terminate
 C0 control characters forbidden
 -------------------------------
 
-These bytes MUST NOT appear anywhere in an ASON document.
+These bytes MUST NOT appear anywhere in an ASON data stream.
 
 ```
 [NUL] `^@` 0x00
@@ -241,7 +241,7 @@ USON
 ASON is an extended-ASCII format, and is agnostic about the particular extended-ASCII encoding used in the plaintext layer.
 An application MAY transcode this to UTF-16 or UTF-32 for internal use, in which case all C0 control codes in the ASON structure MUST also be mapped to the corresponding UTF-16/32 codepoints, and the resulting format is called Unicode Structured Object Notation (USON).
 
-If USON is written to persistent storage or passed between applications, then a byte-order mark (BOM) SHOULD be prepended to the beginning of the document, i.e. [BOM SOH SYN US ...].
+If USON is written to persistent storage or passed between applications, then a byte-order mark (BOM) SHOULD be prepended to the beginning of the data stream, i.e. [BOM SOH SYN US ...].
 This produces one of four ASONDOC magic numbers:
 
 * 0xff 0xfe 0x01 0x00 0x16 0x00 0x1f 0x00 (UTF-16 little-endian)

@@ -157,12 +157,12 @@ As per ECMA-37, [DLE] is used to escape the normal meaning of the following char
 An application MAY use these sequences to denote structure metadata using terminal-safe C0 codes:
 
 ```
-[DLE ENQ] `^P ^E` 0x10,0x05 (quote structure, RESERVED encoding)
-[DLE ACK] `^P ^F` 0x10,0x06 (list structure, base64 encoding)
+[DLE ENQ] `^P ^E` 0x10,0x05 (quote structure)
+[DLE ACK] `^P ^F` 0x10,0x06 (list structure)
 [DLE DLE] `^P ^P` 0x10,0x10 (=[DLE])
-[DLE NAK] `^P ^U` 0x10,0x15 (dictionary structure, no encoding)
-[DLE SYN] `^P ^V` 0x10,0x16 (database structure, RESERVED encoding)
-[DLE ETB] `^P ^W` 0x10,0x17 (array structure, RESERVED encoding)
+[DLE NAK] `^P ^U` 0x10,0x15 (dictionary structure)
+[DLE SYN] `^P ^V` 0x10,0x16 (database structure)
+[DLE ETB] `^P ^W` 0x10,0x17 (array structure)
 ```
 
 The following valid DLE sequences are forbidden in ASON (even at the application layer):
