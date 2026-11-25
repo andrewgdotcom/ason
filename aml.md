@@ -136,13 +136,13 @@ Separators
 Information separators are represented directly by punctuation.
 
 ```
----\n   [FS]
+---     [FS]
 ;       [GS]
 ,       [RS]
 :       [US]
 ```
 
-The file separator `---` MUST appear by itself on a line, with no leading or trailing whitespace.
+The file separator `---` MUST be delimited by whitespace or newlines on either side.
 
 ### Implicit Separators
 
