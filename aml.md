@@ -186,6 +186,9 @@ This permits mostly-lossless roundtripping.
 Leading indentation is preserved by inserting it in the following field as a leading excision, delimited by [CAN].
 Trailing newlines (but not other trailing whitespace) are preserved as trailing excisions, delimited by [EM].
 
+The newline character is always bare [LF], regardless of platform.
+[CR] is treated as any other whitespace, and trimmed from the end of a line.
+
 ### Comments
 
 A line comment is introduced by a hash character followed by a space, and continues until the next newline.
