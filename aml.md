@@ -8,7 +8,8 @@ The main difference is that LaTeX and SIL are optimised for directly marking up 
 Character Set
 -------------
 
-AML claims exclusive use of `\` and `#` characters.
+AML claims exclusive use of the `#` character.
+It also claims use of the `\` character when prefixing ASCII alphanumerics or whitespace, but not when prefixing symbols.
 To suppress interpretation of these characters, they SHOULD be escaped by a prefixed `\`.
 
 AML also interprets square brackets and braces `[ ] { }` when directly prefixed by a macro name.
